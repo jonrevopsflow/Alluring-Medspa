@@ -13,10 +13,11 @@ class GHLAnalyzer:
     def __init__(self, api_token: str, location_id: str):
         self.api_token = api_token
         self.location_id = location_id
-        self.base_url = "https://api.gohighlevel.com/v1"
+        self.base_url = "https://services.leadconnectorhq.com"
         self.headers = {
             "Authorization": f"Bearer {api_token}",
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
+            "Version": "2021-07-28"
         }
 
     def get_leads(self, limit: int = 100) -> List[Dict[str, Any]]:
@@ -27,18 +28,22 @@ class GHLAnalyzer:
                 "locationId": self.location_id,
                 "limit": limit
             }
+            print(f"Fetching from: {url}")
             response = requests.get(url, headers=self.headers, params=params)
             response.raise_for_status()
             data = response.json()
             return data.get("contacts", [])
         except Exception as e:
             print(f"Error fetching leads: {e}")
+            print(f"Response status: {response.status_code if 'response' in locals() else 'N/A'}")
+            if 'response' in locals():
+                print(f"Response text: {response.text}")
             return []
 
     def get_opportunities(self, limit: int = 100) -> List[Dict[str, Any]]:
         """Fetch all opportunities for the location"""
         try:
-            url = f"{self.base_url}/opportunities"
+            url = f"{self.base_url}/opportunities/"
             params = {
                 "locationId": self.location_id,
                 "limit": limit
@@ -54,15 +59,16 @@ class GHLAnalyzer:
     def get_emails(self) -> List[Dict[str, Any]]:
         """Fetch email communication logs"""
         try:
-            url = f"{self.base_url}/conversations/email"
+            url = f"{self.base_url}/conversations"
             params = {
                 "locationId": self.location_id,
+                "type": "email",
                 "limit": 100
             }
             response = requests.get(url, headers=self.headers, params=params)
             response.raise_for_status()
             data = response.json()
-            return data.get("emails", [])
+            return data.get("conversations", [])
         except Exception as e:
             print(f"Error fetching emails: {e}")
             return []
@@ -70,15 +76,16 @@ class GHLAnalyzer:
     def get_sms(self) -> List[Dict[str, Any]]:
         """Fetch SMS communication logs"""
         try:
-            url = f"{self.base_url}/conversations/sms"
+            url = f"{self.base_url}/conversations"
             params = {
                 "locationId": self.location_id,
+                "type": "sms",
                 "limit": 100
             }
             response = requests.get(url, headers=self.headers, params=params)
             response.raise_for_status()
             data = response.json()
-            return data.get("sms", [])
+            return data.get("conversations", [])
         except Exception as e:
             print(f"Error fetching SMS: {e}")
             return []
