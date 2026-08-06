@@ -1,0 +1,55 @@
+name: Daily Dashboard Refresh
+
+on:
+  # Run daily at 10 AM UTC
+  schedule:
+    - cron: '0 10 * * *'
+
+  # Allow manual trigger from GitHub Actions tab
+  workflow_dispatch:
+
+jobs:
+  refresh-data:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Fetch data from Supermetrics
+        env:
+          SUPERMETRICS_API_KEY: ${{ secrets.SUPERMETRICS_API_KEY }}
+        run: python supermetrics_integration.py
+
+      - name: Check if data was updated
+        id: check_changes
+        run: |
+          if git diff --quiet dashboard_data.json; then
+            echo "changes=false" >> $GITHUB_OUTPUT
+          else
+            echo "changes=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Commit and push updated data
+        if: steps.check_changes.outputs.changes == 'true'
+        run: |
+          git config user.name "IVitamin Dashboard Bot"
+          git config user.email "bot@ivitamin.local"
+          git add dashboard_data.json
+          git commit -m "chore: update dashboard data (automated)"
+          git push origin main
+
+      - name: Log refresh status
+        run: |
+          echo "Dashboard refreshed: $(date)"
+          if [ -f dashboard_data.json ]; then
+            echo "File size: $(du -h dashboard_data.json | cut -f1)"
+          fi
